@@ -1,4 +1,4 @@
-const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbzIbpwE8RU0lV472XyRc7uEf6-suQ_q4oP5Om-eYf7tOGdwp241e03fw4o5WqAZzcoiRg/exec';
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbw76uZdz2NAVSjMs-N5Oy2xly6knsfIr77Q6ZQYTQ0-OmP54vYc9BE2twCXVrStaoC6Og/exec';
 
 const state = {
   view: 'customer',

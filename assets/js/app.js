@@ -466,3 +466,101 @@ async function testPostAvailability() {
 window.addEventListener('DOMContentLoaded', function () {
   testPostAvailability();
 });
+function ensureDebugPanel() {
+  let box = document.getElementById('sayakaDebugPanel');
+  if (box) return box;
+
+  box = document.createElement('div');
+  box.id = 'sayakaDebugPanel';
+  box.style.position = 'fixed';
+  box.style.right = '12px';
+  box.style.bottom = '12px';
+  box.style.width = '420px';
+  box.style.maxHeight = '260px';
+  box.style.overflow = 'auto';
+  box.style.background = 'rgba(0,0,0,0.82)';
+  box.style.color = '#fff';
+  box.style.fontSize = '12px';
+  box.style.lineHeight = '1.5';
+  box.style.padding = '10px';
+  box.style.borderRadius = '8px';
+  box.style.zIndex = '999999';
+  box.style.fontFamily = 'monospace';
+  box.style.border = '1px solid rgba(255,255,255,0.18)';
+  box.style.whiteSpace = 'pre-wrap';
+  document.body.appendChild(box);
+  return box;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function addDebugLine(message, detail) {
+  const panel = ensureDebugPanel();
+  const stamp = new Date().toLocaleTimeString('ja-JP');
+  const text = typeof detail === 'undefined'
+    ? String(message)
+    : String(message) + ' ' + JSON.stringify(detail);
+
+  const div = document.createElement('div');
+  div.innerHTML = '[' + escapeHtml(stamp) + '] ' + escapeHtml(text);
+  panel.appendChild(div);
+
+  while (panel.children.length > 30) {
+    panel.removeChild(panel.firstChild);
+  }
+}
+
+async function testPostAvailabilityOnPage() {
+  addDebugLine('POST TEST start', {
+    gasUrl: GAS_API_URL
+  });
+
+  try {
+    const res = await fetch(GAS_API_URL, {
+      method: 'POST',
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'ping',
+        data: { ok: true, source: 'page-debug' }
+      })
+    });
+
+    const text = await res.text();
+
+    addDebugLine('POST TEST result', {
+      status: res.status,
+      ok: res.ok,
+      body: text
+    });
+
+    const panel = ensureDebugPanel();
+    panel.insertAdjacentHTML(
+      'beforeend',
+      '<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,0.15);padding-top:6px;">'
+      + 'STATUS=' + res.status + '<br>BODY=' + escapeHtml(text)
+      + '</div>'
+    );
+  } catch (error) {
+    addDebugLine('POST TEST ERROR', {
+      message: error && error.message ? error.message : String(error)
+    });
+  }
+}
+
+window.addEventListener('DOMContentLoaded', function () {
+  addDebugLine('DOMContentLoaded', { view: 'customer' });
+  testPostAvailabilityOnPage();
+});

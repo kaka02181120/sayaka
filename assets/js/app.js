@@ -183,12 +183,18 @@ async function loadRemoteData() {
 }
 
 async function fetchJson(action, data = {}) {
-  addPageDebugLog('fetchJson start', { action, data });
+  addPageDebugLog('fetchJson start', { action, data, gasUrl: GAS_API_URL });
 
   try {
     const response = await fetch(GAS_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
       body: JSON.stringify({ action, data })
     });
 
@@ -196,6 +202,7 @@ async function fetchJson(action, data = {}) {
       action,
       status: response && response.status,
       ok: response && response.ok,
+      type: response && response.type,
       url: response && response.url
     });
 

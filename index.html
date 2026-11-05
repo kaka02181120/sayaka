@@ -1,181 +1,53 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sayaka Healing</title>
-  <meta name="description" content="Sayaka Healing booking and management page" />
-  <link rel="stylesheet" href="assets/css/styles.css" />
-  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-</head>
-<body>
-  <div class="container">
-    <header class="topbar">
-      <div class="topbar-inner">
-        <div class="brand">
-          <div class="brand-mark">S</div>
-          <div>
-            <div class="brand-name">Sayaka Healing</div>
-            <div class="brand-sub">予約管理</div>
-          </div>
-        </div>
-        <nav class="nav" aria-label="Main navigation">
-          <button type="button" class="secondary" data-view="customer">予約画面</button>
-          <button type="button" class="secondary" data-view="admin">管理画面</button>
-        </nav>
-      </div>
-    </header>
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyaUcBoYoKZLHpBooXwKGxIk_7rcr0GQPh-e3MYTU1LjJVA6g8j4dA4IgzH_nvmU3o_NQ/exec";
 
-    <main>
-      <section id="customerView" class="section">
-        <div class="hero">
-          <div class="hero-card">
-            <div class="eyebrow">Booking</div>
-            <h1 class="h1">あなたにぴったりの時間を予約</h1>
-            <p class="lead">
-              希望のメニューと日程を選び、予約内容を送信してください。<br />
-              予約後にLINE通知が送られるように設定されています。
-            </p>
-            <div class="hero-actions">
-              <button type="button" class="primary" data-scroll="menu-section">メニューを選ぶ</button>
-              <button type="button" class="secondary" data-view="admin">管理者ログイン</button>
-            </div>
-            <div class="metrics">
-              <div class="metric"><strong id="metricMenuCount">0</strong><span>メニュー</span></div>
-              <div class="metric"><strong id="metricSlotCount">0</strong><span>予約枠</span></div>
-              <div class="metric"><strong id="metricBookingCount">0</strong><span>予約件数</span></div>
-            </div>
-          </div>
-        </div>
+function showLog(label, obj) {
+  const el = document.getElementById("debug");
+  if (!el) {
+    const div = document.createElement("div");
+    div.id = "debug";
+    div.style.cssText = "position:fixed;left:10px;bottom:10px;max-width:90vw;max-height:40vh;overflow:auto;background:#111;color:#fff;padding:12px;border-radius:8px;font-size:12px;z-index:99999;";
+    document.body.appendChild(div);
+  }
+  const target = document.getElementById("debug");
+  const text = document.createTextNode(label + " " + JSON.stringify(obj, null, 2) + "\n");
+  target.appendChild(text);
+}
 
-        <div id="menu-section" class="section">
-          <h2 class="section-title">メニューを選択</h2>
-          <div id="menuGrid" class="menu-grid"></div>
-        </div>
+async function testPost() {
+  showLog("POST START", { url: GAS_URL });
 
-        <div class="section">
-          <h2 class="section-title">日程と時間の選択</h2>
-          <div class="booking-wrap">
-            <div class="calendar-panel">
-              <div class="calendar-head">
-                <button type="button" id="prevMonth" class="small ghost">前月</button>
-                <strong id="monthLabel"></strong>
-                <button type="button" id="nextMonth" class="small ghost">次月</button>
-              </div>
-              <div id="calendar" class="calendar-grid"></div>
-              <div id="slotBox" class="slot-box hidden">
-                <h3>時間を選ぶ</h3>
-                <div id="slotGrid" class="slot-grid"></div>
-              </div>
-            </div>
-            <div class="panel">
-              <h3>予約内容</h3>
-              <div class="field">
-                <label>お名前</label>
-                <input id="guestName" type="text" placeholder="例：山田 太郎" />
-              </div>
-              <div class="field">
-                <label>LINE 表示名</label>
-                <input id="lineName" type="text" placeholder="例：しょこたん" />
-              </div>
-              <div class="field">
-                <label>ご相談内容</label>
-                <textarea id="consultation" placeholder="ご相談内容を入力してください"></textarea>
-              </div>
-              <div class="summary-box">
-                <h4>選択中の内容</h4>
-                <div id="summary"></div>
-              </div>
-              <div class="notice">
-                LINEからこのページを開いた場合、LINEユーザーIDが自動で取得されます。<br />
-                通知先は lineUserId / adminLineId を使用します。
-              </div>
-              <div class="box debug-box">
-                <strong>LINE USER ID (デバッグ表示)</strong>
-                <div id="lineUserIdDebug" class="debug-value">未取得</div>
-              </div>
-              <div class="hero-actions actions-spaced">
-                <button id="submitBooking" type="button" class="primary">予約を確定</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+  try {
+    const res = await fetch(GAS_URL, {
+      method: "POST",
+      mode: "cors",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "ping",
+        data: {
+          source: "browser",
+          ok: true
+        }
+      })
+    });
 
-      <section id="adminView" class="section hidden">
-        <div class="tabbar">
-          <button type="button" class="tab active" data-admin-tab="login">ログイン</button>
-          <button type="button" class="tab" data-admin-tab="settings">設定</button>
-          <button type="button" class="tab" data-admin-tab="menus">メニュー管理</button>
-          <button type="button" class="tab" data-admin-tab="slots">予約枠</button>
-          <button type="button" class="tab" data-admin-tab="bookings">予約一覧</button>
-        </div>
+    const text = await res.text();
 
-        <div id="adminLoginPanel" class="admin-grid">
-          <div class="panel">
-            <h3>管理者ログイン</h3>
-            <div class="field">
-              <label>パスワード</label>
-              <input id="adminPassword" type="password" placeholder="管理者パスワードを入力" />
-            </div>
-            <div class="hero-actions">
-              <button id="loginAdmin" type="button" class="primary">ログイン</button>
-            </div>
-          </div>
-          <div class="panel">
-            <h3>管理者情報</h3>
-            <div class="summary-box">
-              <div class="summary-row"><span>LINE URL</span><strong id="adminLineUrl">-</strong></div>
-              <div class="summary-row"><span>LINE ID</span><strong id="adminLineId">-</strong></div>
-              <div class="summary-row"><span>管理者パスワード</span><strong id="adminPasswordStatus">未設定</strong></div>
-            </div>
-          </div>
-        </div>
+    showLog("POST RESULT", {
+      status: res.status,
+      ok: res.ok,
+      body: text
+    });
 
-        <div id="adminSettingsPanel" class="hidden">
-          <div class="admin-grid">
-            <div class="panel">
-              <h3>設定編集</h3>
-              <div class="field"><label>LINE公式URL</label><input id="lineUrlInput" type="url" /></div>
-              <div class="field"><label>LINE ID</label><input id="lineIdInput" type="text" /></div>
-              <div class="field"><label>管理者用 LINE ID</label><input id="adminLineIdInput" type="text" /></div>
-              <div class="field"><label>管理者パスワード</label><input id="passwordInput" type="password" /></div>
-              <div class="hero-actions">
-                <button id="saveSettings" type="button" class="primary">設定を保存</button>
-              </div>
-            </div>
-            <div class="panel">
-              <h3>テンプレート</h3>
-              <div class="field"><label>予約完了メッセージ</label><textarea id="templateInput" rows="8"></textarea></div>
-            </div>
-          </div>
-        </div>
+    console.log("POST RESULT", res.status, res.ok, text);
+  } catch (err) {
+    showLog("POST FAIL", { message: String(err) });
+    console.log("POST FAIL", err);
+  }
+}
 
-        <div id="adminMenusPanel" class="hidden">
-          <div class="panel">
-            <h3>メニュー管理</h3>
-            <div id="menuAdminList" class="stack-list"></div>
-          </div>
-        </div>
-
-        <div id="adminSlotsPanel" class="hidden">
-          <div class="panel">
-            <h3>予約枠管理</h3>
-            <div id="slotAdminList" class="stack-list"></div>
-          </div>
-        </div>
-
-        <div id="adminBookingsPanel" class="hidden">
-          <div class="panel">
-            <h3>予約一覧</h3>
-            <div id="bookingList" class="stack-list"></div>
-          </div>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <script src="assets/js/liff.js?v=20261105-1258"></script>
-  <script src="assets/js/app.js?v=20261105-1258"></script>
-</body>
-</html>
+window.addEventListener("DOMContentLoaded", () => {
+  showLog("DOM loaded", { gasUrl: GAS_URL });
+  testPost();
+});

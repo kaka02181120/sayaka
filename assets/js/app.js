@@ -28,28 +28,38 @@ function pageLog(msg, obj) {
   while (box.children.length > 20) box.removeChild(box.firstChild);
 }
 
-async function testGetOnly() {
-  pageLog('GET START', { url: GAS_URL + '?action=health' });
+async function testPostOnly() {
+  pageLog('POST START', { url: GAS_URL });
 
   try {
-    const res = await fetch(GAS_URL + '?action=health', {
-      method: 'GET',
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
       mode: 'cors',
-      cache: 'no-store'
+      credentials: 'omit',
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'ping',
+        data: { source: 'plain-post-test', ok: true }
+      })
     });
+
     const text = await res.text();
-    pageLog('GET RESULT', {
+    pageLog('POST RESULT', {
       status: res.status,
       ok: res.ok,
       body: text
     });
   } catch (error) {
-    pageLog('GET FAIL', {
+    pageLog('POST FAIL', {
       message: error && error.message ? error.message : String(error)
     });
   }
 }
 
 window.addEventListener('DOMContentLoaded', function () {
-  testGetOnly();
+  testPostOnly();
 });

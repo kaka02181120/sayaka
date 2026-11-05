@@ -15,10 +15,51 @@ const state = {
 
 window.sayakaState = state;
 
+function addPageDebugLog(message, payload) {
+  const existing = document.getElementById('sayakaDebugLog');
+  if (!existing) {
+    const box = document.createElement('div');
+    box.id = 'sayakaDebugLog';
+    box.style.position = 'fixed';
+    box.style.left = '12px';
+    box.style.bottom = '12px';
+    box.style.right = '12px';
+    box.style.maxHeight = '220px';
+    box.style.overflow = 'auto';
+    box.style.background = 'rgba(0,0,0,0.82)';
+    box.style.color = '#fff';
+    box.style.fontSize = '12px';
+    box.style.lineHeight = '1.5';
+    box.style.padding = '10px';
+    box.style.borderRadius = '8px';
+    box.style.zIndex = '99999';
+    box.style.fontFamily = 'monospace';
+    box.style.whiteSpace = 'pre-wrap';
+    box.style.border = '1px solid rgba(255,255,255,0.15)';
+    document.body.appendChild(box);
+  }
+
+  const target = document.getElementById('sayakaDebugLog');
+  const stamp = new Date().toLocaleTimeString();
+  const detail = typeof payload === 'undefined' ? '' : '\n' + JSON.stringify(payload, null, 2);
+  const line = '[' + stamp + '] ' + String(message) + detail;
+  const current = target.textContent ? target.textContent + '\n---\n' + line : line;
+  target.textContent = current.slice(-3000);
+}
+
 window.addEventListener('DOMContentLoaded', async function () {
+  addPageDebugLog('DOMContentLoaded', { view: state.view, gasUrl: GAS_API_URL });
   bindUI();
   if (window.sayakaLiff && typeof window.sayakaLiff.init === 'function') {
-    await window.sayakaLiff.init();
+    addPageDebugLog('LIFF init start');
+    try {
+      await window.sayakaLiff.init();
+      addPageDebugLog('LIFF init success');
+    } catch (error) {
+      addPageDebugLog('LIFF init error', { message: error && error.message ? error.message : String(error) });
+    }
+  } else {
+    addPageDebugLog('LIFF not found or init not available');
   }
   await loadRemoteData();
   renderAll();
@@ -95,11 +136,20 @@ function showAdminTab(tabName) {
 
 async function loadRemoteData() {
   try {
+    addPageDebugLog('loadRemoteData start');
     const settingsRes = await fetchJson('getSettings');
     const menusRes = await fetchJson('getMenus');
     const slotsRes = await fetchJson('getSlots');
     const bookingsRes = await fetchJson('listBookings');
     const templateRes = await fetchJson('getTemplate');
+
+    addPageDebugLog('loadRemoteData response', {
+      settingsRes,
+      menusRes,
+      slotsRes,
+      bookingsRes,
+      templateRes
+    });
 
     if (settingsRes && settingsRes.ok && settingsRes.settings) {
       state.settings = settingsRes.settings;
@@ -116,23 +166,56 @@ async function loadRemoteData() {
     if (templateRes && templateRes.ok && templateRes.template) {
       state.template = templateRes.template;
     }
+
+    addPageDebugLog('loadRemoteData state', {
+      settings: state.settings,
+      menusCount: state.menus.length,
+      slotsKeys: Object.keys(state.slots),
+      bookingsCount: state.bookings.length,
+      templateSet: !!state.template
+    });
   } catch (error) {
+    addPageDebugLog('loadRemoteData error', {
+      message: error && error.message ? error.message : String(error)
+    });
     console.warn('loadRemoteData error', error);
   }
 }
 
 async function fetchJson(action, data = {}) {
-  const response = await fetch(GAS_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, data })
-  });
+  addPageDebugLog('fetchJson start', { action, data });
 
-  const text = await response.text();
   try {
-    return JSON.parse(text);
+    const response = await fetch(GAS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, data })
+    });
+
+    addPageDebugLog('fetchJson response status', {
+      action,
+      status: response && response.status,
+      ok: response && response.ok,
+      url: response && response.url
+    });
+
+    const text = await response.text();
+    addPageDebugLog('fetchJson body', { action, body: text });
+
+    try {
+      const parsed = JSON.parse(text);
+      addPageDebugLog('fetchJson parsed', { action, parsed });
+      return parsed;
+    } catch (error) {
+      addPageDebugLog('fetchJson parse error', { action, raw: text });
+      return { ok: false, raw: text };
+    }
   } catch (error) {
-    return { ok: false, raw: text };
+    addPageDebugLog('fetchJson network error', {
+      action,
+      message: error && error.message ? error.message : String(error)
+    });
+    throw error;
   }
 }
 

@@ -15,41 +15,86 @@ const state = {
 
 window.sayakaState = state;
 
-function addPageDebugLog(message, payload) {
-  const existing = document.getElementById('sayakaDebugLog');
-  if (!existing) {
-    const box = document.createElement('div');
-    box.id = 'sayakaDebugLog';
-    box.style.position = 'fixed';
-    box.style.left = '12px';
-    box.style.bottom = '12px';
-    box.style.right = '12px';
-    box.style.maxHeight = '220px';
-    box.style.overflow = 'auto';
-    box.style.background = 'rgba(0,0,0,0.82)';
-    box.style.color = '#fff';
-    box.style.fontSize = '12px';
-    box.style.lineHeight = '1.5';
-    box.style.padding = '10px';
-    box.style.borderRadius = '8px';
-    box.style.zIndex = '99999';
-    box.style.fontFamily = 'monospace';
-    box.style.whiteSpace = 'pre-wrap';
-    box.style.border = '1px solid rgba(255,255,255,0.15)';
-    document.body.appendChild(box);
-  }
+function ensureDebugPanel() {
+  let panel = document.getElementById('sayakaDebugLog');
+  if (panel) return panel;
 
-  const target = document.getElementById('sayakaDebugLog');
+  panel = document.createElement('div');
+  panel.id = 'sayakaDebugLog';
+  panel.style.position = 'fixed';
+  panel.style.left = '12px';
+  panel.style.bottom = '12px';
+  panel.style.right = '12px';
+  panel.style.maxHeight = '260px';
+  panel.style.overflow = 'auto';
+  panel.style.background = 'rgba(0,0,0,0.82)';
+  panel.style.color = '#fff';
+  panel.style.fontSize = '12px';
+  panel.style.lineHeight = '1.5';
+  panel.style.padding = '10px';
+  panel.style.borderRadius = '8px';
+  panel.style.zIndex = '99999';
+  panel.style.fontFamily = 'monospace';
+  panel.style.whiteSpace = 'pre-wrap';
+  panel.style.border = '1px solid rgba(255,255,255,0.15)';
+  document.body.appendChild(panel);
+  return panel;
+}
+
+function addPageDebugLog(message, payload) {
+  const target = ensureDebugPanel();
   const stamp = new Date().toLocaleTimeString();
   const detail = typeof payload === 'undefined' ? '' : '\n' + JSON.stringify(payload, null, 2);
   const line = '[' + stamp + '] ' + String(message) + detail;
   const current = target.textContent ? target.textContent + '\n---\n' + line : line;
-  target.textContent = current.slice(-3000);
+  target.textContent = current.slice(-4000);
+}
+
+window.addEventListener('error', function (event) {
+  addPageDebugLog('window error', {
+    message: event && event.message ? event.message : String(event),
+    filename: event && event.filename ? event.filename : '',
+    lineno: event && event.lineno ? event.lineno : '',
+    colno: event && event.colno ? event.colno : ''
+  });
+});
+
+async function runPagePostProbe() {
+  addPageDebugLog('POST probe start', { gasUrl: GAS_API_URL });
+
+  try {
+    const response = await fetch(GAS_API_URL, {
+      method: 'POST',
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'ping',
+        data: { ok: true, source: 'page-debug' }
+      })
+    });
+
+    const text = await response.text();
+    addPageDebugLog('POST probe result', {
+      status: response && response.status,
+      ok: response && response.ok,
+      body: text
+    });
+  } catch (error) {
+    addPageDebugLog('POST probe error', {
+      message: error && error.message ? error.message : String(error)
+    });
+  }
 }
 
 window.addEventListener('DOMContentLoaded', async function () {
   addPageDebugLog('DOMContentLoaded', { view: state.view, gasUrl: GAS_API_URL });
   bindUI();
+  await runPagePostProbe();
   if (window.sayakaLiff && typeof window.sayakaLiff.init === 'function') {
     addPageDebugLog('LIFF init start');
     try {
@@ -427,140 +472,3 @@ function formatDate(date) {
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
-// app.js にそのまま追加
-const TEST_API_URL = GAS_API_URL;
-
-async function testPostAvailability() {
-  console.log('[POST TEST] start', TEST_API_URL);
-
-  try {
-    const response = await fetch(TEST_API_URL, {
-      method: 'POST',
-      mode: 'cors',
-      credentials: 'omit',
-      cache: 'no-store',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        action: 'ping',
-        data: { ok: true, source: 'browser' }
-      })
-    });
-
-    const text = await response.text();
-    console.log('[POST TEST] status=', response.status);
-    console.log('[POST TEST] body=', text);
-
-    alert('POSTテスト結果: ' + response.status + ' / ' + text);
-    return { status: response.status, text };
-  } catch (error) {
-    console.log('[POST TEST] ERROR', error);
-    alert('POSTテスト失敗: ' + (error && error.message ? error.message : String(error)));
-    return { error: String(error) };
-  }
-}
-
-// 画面読み込み時に自動実行
-window.addEventListener('DOMContentLoaded', function () {
-  testPostAvailability();
-});
-function ensureDebugPanel() {
-  let box = document.getElementById('sayakaDebugPanel');
-  if (box) return box;
-
-  box = document.createElement('div');
-  box.id = 'sayakaDebugPanel';
-  box.style.position = 'fixed';
-  box.style.right = '12px';
-  box.style.bottom = '12px';
-  box.style.width = '420px';
-  box.style.maxHeight = '260px';
-  box.style.overflow = 'auto';
-  box.style.background = 'rgba(0,0,0,0.82)';
-  box.style.color = '#fff';
-  box.style.fontSize = '12px';
-  box.style.lineHeight = '1.5';
-  box.style.padding = '10px';
-  box.style.borderRadius = '8px';
-  box.style.zIndex = '999999';
-  box.style.fontFamily = 'monospace';
-  box.style.border = '1px solid rgba(255,255,255,0.18)';
-  box.style.whiteSpace = 'pre-wrap';
-  document.body.appendChild(box);
-  return box;
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-function addDebugLine(message, detail) {
-  const panel = ensureDebugPanel();
-  const stamp = new Date().toLocaleTimeString('ja-JP');
-  const text = typeof detail === 'undefined'
-    ? String(message)
-    : String(message) + ' ' + JSON.stringify(detail);
-
-  const div = document.createElement('div');
-  div.innerHTML = '[' + escapeHtml(stamp) + '] ' + escapeHtml(text);
-  panel.appendChild(div);
-
-  while (panel.children.length > 30) {
-    panel.removeChild(panel.firstChild);
-  }
-}
-
-async function testPostAvailabilityOnPage() {
-  addDebugLine('POST TEST start', {
-    gasUrl: GAS_API_URL
-  });
-
-  try {
-    const res = await fetch(GAS_API_URL, {
-      method: 'POST',
-      mode: 'cors',
-      credentials: 'omit',
-      cache: 'no-store',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        action: 'ping',
-        data: { ok: true, source: 'page-debug' }
-      })
-    });
-
-    const text = await res.text();
-
-    addDebugLine('POST TEST result', {
-      status: res.status,
-      ok: res.ok,
-      body: text
-    });
-
-    const panel = ensureDebugPanel();
-    panel.insertAdjacentHTML(
-      'beforeend',
-      '<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,0.15);padding-top:6px;">'
-      + 'STATUS=' + res.status + '<br>BODY=' + escapeHtml(text)
-      + '</div>'
-    );
-  } catch (error) {
-    addDebugLine('POST TEST ERROR', {
-      message: error && error.message ? error.message : String(error)
-    });
-  }
-}
-
-window.addEventListener('DOMContentLoaded', function () {
-  addDebugLine('DOMContentLoaded', { view: 'customer' });
-  testPostAvailabilityOnPage();
-});

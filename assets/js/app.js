@@ -183,7 +183,8 @@ async function loadRemoteData() {
 }
 
 async function fetchJson(action, data = {}) {
-  addPageDebugLog('fetchJson start', { action, data, gasUrl: GAS_API_URL });
+  const payload = JSON.stringify({ action, data });
+  addPageDebugLog('fetchJson start', { action, gasUrl: GAS_API_URL });
 
   try {
     const response = await fetch(GAS_API_URL, {
@@ -195,10 +196,10 @@ async function fetchJson(action, data = {}) {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
-      body: JSON.stringify({ action, data })
+      body: payload
     });
 
-    addPageDebugLog('fetchJson response status', {
+    addPageDebugLog('fetchJson response', {
       action,
       status: response && response.status,
       ok: response && response.ok,
@@ -207,7 +208,7 @@ async function fetchJson(action, data = {}) {
     });
 
     const text = await response.text();
-    addPageDebugLog('fetchJson body', { action, body: text });
+    addPageDebugLog('fetchJson body', { action, text });
 
     try {
       const parsed = JSON.parse(text);

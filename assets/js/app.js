@@ -50,17 +50,24 @@ function addPageDebugLog(message, payload) {
 window.addEventListener('DOMContentLoaded', async function () {
   addPageDebugLog('DOMContentLoaded', { view: state.view, gasUrl: GAS_API_URL });
   bindUI();
+
   if (window.sayakaLiff && typeof window.sayakaLiff.init === 'function') {
     addPageDebugLog('LIFF init start');
     try {
       await window.sayakaLiff.init();
       addPageDebugLog('LIFF init success');
     } catch (error) {
-      addPageDebugLog('LIFF init error', { message: error && error.message ? error.message : String(error) });
+      addPageDebugLog('LIFF init error', {
+        message: error && error.message ? error.message : String(error)
+      });
     }
   } else {
     addPageDebugLog('LIFF not found or init not available');
   }
+
+  const postTest = await testPostAvailability();
+  addPageDebugLog('POST test result', { postTest });
+
   await loadRemoteData();
   renderAll();
 });
@@ -120,7 +127,9 @@ function showAdminTab(tabName) {
     if (panel) panel.classList.add('hidden');
   });
 
-  document.querySelectorAll('.tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.adminTab === tabName));
+  document.querySelectorAll('.tab').forEach((tab) => {
+    tab.classList.toggle('active', tab.dataset.adminTab === tabName);
+  });
 
   const map = {
     login: 'adminLoginPanel',
@@ -132,6 +141,50 @@ function showAdminTab(tabName) {
 
   const target = document.getElementById(map[tabName]);
   if (target) target.classList.remove('hidden');
+}
+
+async function testPostAvailability() {
+  addPageDebugLog('POST test start', { gasUrl: GAS_API_URL });
+
+  try {
+    const response = await fetch(GAS_API_URL, {
+      method: 'POST',
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        action: 'ping'
+      })
+    });
+
+    addPageDebugLog('POST test response', {
+      status: response && response.status,
+      ok: response && response.ok,
+      type: response && response.type,
+      url: response && response.url
+    });
+
+    const text = await response.text();
+    addPageDebugLog('POST test body', { text });
+
+    try {
+      const json = JSON.parse(text);
+      addPageDebugLog('POST test parsed', { json });
+      return json;
+    } catch (error) {
+      addPageDebugLog('POST test parse error', { raw: text });
+      return { ok: false, raw: text };
+    }
+  } catch (error) {
+    addPageDebugLog('POST test network error', {
+      message: error && error.message ? error.message : String(error)
+    });
+    return { ok: false, message: String(error) };
+  }
 }
 
 async function loadRemoteData() {
@@ -236,6 +289,8 @@ function renderAll() {
 
 function renderMenus() {
   const grid = document.getElementById('menuGrid');
+  if (!grid) return;
+
   grid.innerHTML = '';
 
   state.menus.forEach((menu) => {
@@ -265,7 +320,7 @@ function renderMenus() {
   });
 
   if (!state.menus.length) {
-    grid.innerHTML = '<div class="panel">メニューがまだありません。</div>';
+    grid.innerHTML = '<div class=\"panel\">メニューがまだありません。</div>';
   }
 }
 
@@ -353,9 +408,13 @@ function updateSummary() {
 }
 
 function updateAdminStatus() {
-  document.getElementById('adminLineId').textContent = state.settings.adminLineId || '-';
-  document.getElementById('adminLineUrl').textContent = state.settings.lineUrl || '-';
-  document.getElementById('adminPasswordStatus').textContent = state.settings.password ? '設定済み' : '未設定';
+  const adminLineId = document.getElementById('adminLineId');
+  const adminLineUrl = document.getElementById('adminLineUrl');
+  const adminPasswordStatus = document.getElementById('adminPasswordStatus');
+
+  if (adminLineId) adminLineId.textContent = state.settings.adminLineId || '-';
+  if (adminLineUrl) adminLineUrl.textContent = state.settings.lineUrl || '-';
+  if (adminPasswordStatus) adminPasswordStatus.textContent = state.settings.password ? '設定済み' : '未設定';
 }
 
 async function handleBookingSubmit() {
